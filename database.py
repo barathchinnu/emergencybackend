@@ -18,19 +18,27 @@ else:
     if SQLALCHEMY_DATABASE_URL.startswith("mysql://"):
         SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("mysql://", "mysql+pymysql://", 1)
     
-    # 2. Fix 'ssl-mode' (hyphen) to 'ssl_ca' (supported by PyMySQL in SQLAlchemy URL)
-    # On Render, system CA certs are at /etc/ssl/certs/ca-certificates.crt
-    if "ssl-mode=REQUIRED" in SQLALCHEMY_DATABASE_URL:
-        SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("ssl-mode=REQUIRED", "ssl_ca=/etc/ssl/certs/ca-certificates.crt")
+    # 2. Strip any existing ssl-mode parameters (we will handle it in connect_args)
+    if "ssl-mode=" in SQLALCHEMY_DATABASE_URL:
+        # Simple removal to avoid parameter conflicts
+        SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.split("?")[0]
 
 # Final Debug logging for Render (password hidden)
 if "@" in SQLALCHEMY_DATABASE_URL:
     masked_url = SQLALCHEMY_DATABASE_URL.split("@")[-1]
     print(f"DEBUG: Final Connection URL: ...@{masked_url}")
-else:
-    print(f"DEBUG: Final Connection URL: {SQLALCHEMY_DATABASE_URL}")
 
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
+# Production SSL settings for Aiven (bypass verify for self-signed certs)
+connect_args = {}
+if "aivencloud.com" in SQLALCHEMY_DATABASE_URL:
+    connect_args = {
+        "ssl": {
+            "check_hostname": False,
+            "verify_cert": False
+        }
+    }
+
+engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args=connect_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
