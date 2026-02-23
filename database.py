@@ -24,6 +24,10 @@ else:
     # For Railway/Render, we might need to handle the 'mysql://' vs 'mysql+pymysql://' prefix
     if SQLALCHEMY_DATABASE_URL.startswith("mysql://"):
         SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("mysql://", "mysql+pymysql://", 1)
+    
+    # Fix 'ssl-mode' (hyphen) to 'ssl_mode' (underscore) for PyMySQL compatibility
+    if "ssl-mode=" in SQLALCHEMY_DATABASE_URL:
+        SQLALCHEMY_DATABASE_URL = SQLALCHEMY_DATABASE_URL.replace("ssl-mode=", "ssl_mode=")
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
