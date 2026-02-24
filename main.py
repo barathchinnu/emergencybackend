@@ -5,12 +5,30 @@ from typing import List
 import crud, models, schemas
 from database import engine, get_db
 
-# Create tables in the database (equivalent to Spring Boot's ddl-auto=update)
-models.Base.metadata.create_all(bind=engine)
-
-app = FastAPI(title="Medical Response API")
-
 import os
+import logging
+from contextlib import asynccontextmanager
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup logic
+    try:
+        logger.info("Connecting to database and creating tables...")
+        models.Base.metadata.create_all(bind=engine)
+        logger.info("Database tables verified.")
+    except Exception as e:
+        logger.error(f"Database connection failed: {e}")
+        # In production, we log but don't crash the server immediately
+        # so that it stays up and provides logs to the user.
+    
+    yield
+    # Shutdown logic (if any)
+
+app = FastAPI(title="Medical Response API", lifespan=lifespan)
 
 # Configure CORS (matching AuthController origins)
 # In production, set ALLOWED_ORIGINS to your Vercel URL
